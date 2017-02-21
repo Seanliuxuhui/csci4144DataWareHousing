@@ -2,10 +2,11 @@ package csci4144DataWareHousing;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 public class Apriori {
 
@@ -14,6 +15,7 @@ public class Apriori {
 	private double sup_rate;
 	private double conf_rate;
 	private List<ItemSet> frequentItemSets = new ArrayList<>();
+	private List<ItemSet> candidateItemSets = null;
 	public Apriori(Database db, double support, double confidence){
 		this.db = db;
 		this.sup_rate = support;
@@ -53,9 +55,23 @@ public class Apriori {
 		int m = 2;
 		
 		//3. with first itemset we continue to run generate frequent itemset until some condition are met.
-		List<ItemSet> tmpItemSet = this.GenerateFrequentItemSet(firstItemSet, m);
+		
+		List<ItemSet> tmpItemSet = firstItemSet;
 		while(tmpItemSet.size() < 2){
-			tmpItemSet = this.GenerateFrequentItemSet(tmpItemSet, m++);
+			candidateItemSets = new ArrayList<>();
+			for(int i = 0; i < tmpItemSet.size() - 1; i++){
+				ItemSet iItemSet = tmpItemSet.get(i);
+				for(int j = i + 1; j < tmpItemSet.size(); j++){
+					ItemSet jItemSet = tmpItemSet.get(j);
+					List<KeyValue> tmp = this.JoinItemSet(++m, iItemSet.getItemSet(), jItemSet.getItemSet());
+					double newSupportRate = this.GetSupportValueForItemSet(tmp);
+					ItemSet newItemSet = new ItemSet();
+					newItemSet.addAll(tmp);
+					newItemSet.setSupp(newSupportRate);
+					candidateItemSets.add(newItemSet);
+				}
+			}
+			tmpItemSet = this.GenerateFrequentItemSet(candidateItemSets, m);
 			frequentItemSets.addAll(tmpItemSet);
 		}
 		
@@ -138,7 +154,40 @@ public class Apriori {
 		return true;
 	}
 	private List<KeyValue> JoinItemSet(int K, List<KeyValue> itemsOutter, List<KeyValue> itemsInner){
-		
+		List<KeyValue> kv = new ArrayList<>();
+		if(K == 2){
+			if(!itemsOutter.get(0).getKey().equals(itemsInner.get(0).getKey())){
+				kv.addAll(itemsOutter);
+				kv.addAll(itemsInner);
+				kv = this.sortItemSet(kv);
+			}
+		}else{
+			itemsOutter = this.sortItemSet(itemsOutter);
+			itemsInner = this.sortItemSet(itemsInner);
+			boolean forward = true;
+			boolean backward = true;
+			for(int i = 0; i < K - 1; i++){
+				if(!itemsOutter.get(i).equals(itemsInner.get(i))){
+					forward = false;
+				}
+			}
+			
+			if(!forward){
+				for(int i = K - 1; i >= 1; i--){
+					if(!itemsOutter.get(i).equals(itemsInner.get(i))){
+						backward = false;
+					}
+				}
+			}
+			
+			if(!forward && !backward){
+				return kv;
+			}else{
+				kv.addAll(itemsOutter);
+				kv.retainAll(itemsInner);
+				kv.addAll(itemsInner);
+			}
+		}
 		return new ArrayList<>();
 	}
 	private boolean IsPruneRules(){
@@ -157,5 +206,15 @@ public class Apriori {
 	}
 	private boolean IsRuleExists(List<Rules> lstRules, Rules ruleToFind){
 		return true;
+	}
+	private List<KeyValue> sortItemSet(List<KeyValue> kvList){
+		List<KeyValue> result = new ArrayList<>();
+		List<String> labels = db.getLabelNames();
+		Map<Integer, KeyValue> orderMap = new TreeMap<>();
+		for(int i = 0; i < kvList.size(); i++){
+			orderMap.put(labels.indexOf(kvList.get(i).getKey()), kvList.get(i));
+		}
+		result.addAll(orderMap.values());
+		return result;
 	}
 }

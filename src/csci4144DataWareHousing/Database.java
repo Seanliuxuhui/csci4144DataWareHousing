@@ -79,6 +79,9 @@ public class Database {
 		return dbContent.get(0).size();
 	}
 	
+	public List<String> getLabelNames(){
+		return dbContent.get(0);
+	}
 	public int countLiteral(List<KeyValue> kvList){
 		boolean found = false;
 		
