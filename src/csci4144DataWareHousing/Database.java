@@ -85,21 +85,19 @@ public class Database {
 	public int countLiteral(List<KeyValue> kvList){
 		boolean found = false;
 		
-		int count = 0;
+		int count = 0, itemCount = 0;
 		
 		for(int i = 1; i < dbContent.size(); i++){
 			List<String> item = dbContent.get(i);
 			for(KeyValue kv: kvList){
 				if(item.contains(kv.getValue())){
-					found = true;
-				}else{
-					found = false;
+					itemCount++;
 				}
 			}
-			if(found){
+			if(itemCount == kvList.size()){
 				count++;
+				itemCount = 0;
 			}
-			found = false;
 		}
 		
 		return count;
