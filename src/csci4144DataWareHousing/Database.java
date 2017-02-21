@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +26,6 @@ public class Database {
 		List<String> s = null;
 		try(BufferedReader  br = new BufferedReader (new FileReader(strFileName))){
 			String line = br.readLine();
-			int i = 0;
 			while(line != null){
 				if(line.length()>0){
 					String[] words = line.split(" ");
@@ -42,6 +42,7 @@ public class Database {
 			br.close();
 		}
 		
+		//get attribute names of this dataset
 		List<String> labels = dbContent.get(0);
 		
 		for(String label: labels){
@@ -63,13 +64,41 @@ public class Database {
 		}
 	}
 	
-	public List<String> GetColumnDistinctValues(int iColumnIndex){
-//		String[] r = (String[]) labelMap.get(dbContent.get(0).toArray()[iColumnIndex]).toArray();
-		List<String> result = new ArrayList<>();
-		result.addAll(labelMap.get(dbContent.get(0).toArray()[iColumnIndex]));
-//		for(String d: r){
-//			result.add
-//		}
-		return result;
+	public int RowCount(){
+		return dbContent.size() - 1;
+	}
+	public List<String> GetColumnDistinctValues(String labelName){
+		return labelMap.get(labelName);
+	}
+	
+	public String getLabelName(int iColumnIndex){
+		return dbContent.get(0).get(iColumnIndex);
+	}
+	
+	public int getlabelSize(){
+		return dbContent.get(0).size();
+	}
+	
+	public int countLiteral(List<KeyValue> kvList){
+		boolean found = false;
+		
+		int count = 0;
+		
+		for(int i = 1; i < dbContent.size(); i++){
+			List<String> item = dbContent.get(i);
+			for(KeyValue kv: kvList){
+				if(item.contains(kv.getValue())){
+					found = true;
+				}else{
+					found = false;
+				}
+			}
+			if(found){
+				count++;
+			}
+			found = false;
+		}
+		
+		return count;
 	}
 }
