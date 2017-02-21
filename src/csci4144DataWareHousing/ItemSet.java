@@ -22,6 +22,9 @@ public class ItemSet {
 	public void add(KeyValue kv){
 		kvList.add(kv);
 	}
+	public void addAll(List<KeyValue> newKVList){
+		kvList.addAll(newKVList);
+	}
 	public List<KeyValue> getItemSet(){
 		return kvList;
 	}
