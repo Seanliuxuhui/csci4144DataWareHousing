@@ -3,11 +3,14 @@ package csci4144DataWareHousing;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 public class Apriori {
 
@@ -17,6 +20,7 @@ public class Apriori {
 	private double conf_rate;
 	private List<ItemSet> frequentItemSets = new ArrayList<>();
 	private List<ItemSet> candidateItemSets = null;
+	private Map<Integer, List<ItemSet>> frequentItemSetMap = new HashMap<>();
 	public Apriori(Database db, double support, double confidence){
 		this.db = db;
 		this.sup_rate = support;
@@ -29,8 +33,9 @@ public class Apriori {
 		for(int i = 0; i < labelSize; i++){
 			String tmpLabel = db.getLabelName(i);
 			List<String> distinctVals = db.GetColumnDistinctValues(tmpLabel);
+			int t = 1;
 			for(String val: distinctVals){
-				KeyValue kv = new KeyValue(tmpLabel, val);
+				KeyValue kv = new KeyValue(tmpLabel, val, i + ":" + t++);
 				items.add(kv);
 			}
 		}
@@ -39,6 +44,8 @@ public class Apriori {
 		List<ItemSet> firstItemSet = null;
 		try {
 			firstItemSet = this.GenerateFirstItemSet();
+			frequentItemSets.addAll(firstItemSet);
+			this.frequentItemSetMap.put(1, firstItemSet);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -54,6 +61,7 @@ public class Apriori {
 		}
 		
 		int m = 2;
+		boolean exists = false;
 		
 		//3. with first itemset we continue to run generate frequent itemset until some condition are met.
 		
@@ -64,19 +72,40 @@ public class Apriori {
 				ItemSet iItemSet = tmpItemSet.get(i);
 				for(int j = i + 1; j < tmpItemSet.size(); j++){
 					ItemSet jItemSet = tmpItemSet.get(j);
-					List<KeyValue> tmp = this.JoinItemSet(m, iItemSet.getItemSet(), jItemSet.getItemSet());
-					if(tmp.size() != 0){
-						double newSupportRate = this.GetSupportValueForItemSet(tmp);
-						ItemSet newItemSet = new ItemSet();
-						newItemSet.addAll(tmp);
-						newItemSet.setSupp(newSupportRate);
-						candidateItemSets.add(newItemSet);
+					Set<String> tmp = JoinItemSet(m, iItemSet.getItemSetKeyValuesList(), jItemSet.getItemSetKeyValuesList());
+					for(ItemSet it: candidateItemSets){
+						if(it.getItemSetKeyValuesList().containsAll(tmp)){
+							exists= true;
+						}
 					}
+					if(tmp.size() == m && !exists){
+						if(m == 4){
+							System.out.println(tmp.toString());
+						}
+						List<KeyValue> result = this.buildKeyValueListFromString(tmp);
+						double newSupportRate = this.GetSupportValueForItemSet(result);
+						if(m == 4){
+							System.out.println(newSupportRate);
+						}
+						if(newSupportRate > this.sup_rate){
+							ItemSet newItemSet = new ItemSet();
+							newItemSet.addAll(result);
+							newItemSet.setSupp(newSupportRate);
+							newItemSet.addStringKVList(tmp);
+							candidateItemSets.add(newItemSet);
+						}
+					}
+					exists = false;
 				}
 			}
-			tmpItemSet = this.GenerateFrequentItemSet(candidateItemSets);
-			m++;
-			frequentItemSets.addAll(tmpItemSet);
+			if(m == 4){
+				for(ItemSet it: candidateItemSets){
+					System.out.println(it.getItemSetKeyValuesList().toString());
+				}
+			}
+			tmpItemSet = this.GenerateFrequentItemSet(candidateItemSets,m);
+			this.frequentItemSetMap.put(m++, new ArrayList<ItemSet>(tmpItemSet));
+			frequentItemSets.addAll(new ArrayList<ItemSet>(tmpItemSet));
 		}
 		
 		this.printFreqItemSet(frequentItemSets);
@@ -92,7 +121,9 @@ public class Apriori {
 				KeyValue kv = kvList.get(i);
 				System.out.println("label: " + kv.getKey() + " value: " + kv.getValue());
 			}
+			System.out.println(iSet.getItemSetKeyValuesList().toString());
 			System.out.println(iSet.getSupp());
+			
 		}
 	}
 	public List<ItemSet> SortList (List<ItemSet> lstKItemItemSetCopied){
@@ -116,75 +147,82 @@ public class Apriori {
 			tmp.add(kv);
 			double freq_rate = this.GetSupportValueForItemSet(tmp);
 			if(freq_rate > this.sup_rate){
+				Set<String> s = new HashSet<>();
+				s.add(kv.getKeyValueString());
 				tmpItemSet = new ItemSet();
 				tmpItemSet.add(kv);
 				tmpItemSet.setSupp(freq_rate);
+				tmpItemSet.addStringKVList(s);
 				firstItemSet.add(tmpItemSet);
 			}
 		}
 		return firstItemSet;
 	}
-	private List<ItemSet> PruneKItemSet(List<ItemSet> lstKItemSet)
-	{
+	private List<ItemSet> PruneKItemSet(List<ItemSet> lstKItemSet, int K)
+	{   
 		List<ItemSet> result = new ArrayList<>();
-		for(ItemSet iSet: lstKItemSet){
-			if(iSet.getSupp() > this.sup_rate){
-				result.add(iSet);
+		if(K > 2){
+			List<ItemSet> frequentK_1ItemSet = this.frequentItemSetMap.get(K - 1);
+			for(ItemSet iSet: lstKItemSet){
+				int count = 0;
+				for(ItemSet fSet: frequentK_1ItemSet){
+					if(iSet.getItemSetKeyValuesList().containsAll(fSet.getItemSetKeyValuesList())){
+						count++;
+					}
+				}
+				if(count == K){
+					result.add(iSet);
+				}
 			}
+			return result;
 		}
-		return result;
-	}
-	private List<ItemSet> GenerateFrequentItemSet(List<ItemSet> lstItemSet){
+		return lstKItemSet;
 		
-		return this.PruneKItemSet(lstItemSet);
+	}
+	private List<ItemSet> GenerateFrequentItemSet(List<ItemSet> lstItemSet, int K){
+		
+		return this.PruneKItemSet(lstItemSet, K);
 	}
 	private boolean IsItemSetExists(List<ItemSet> lstKLevelItemSet, List<KeyValue> lstKeyValues){
 		return true;
 	}
-	private List<KeyValue> JoinItemSet(int K, List<KeyValue> itemsOutter, List<KeyValue> itemsInner){
-		List<KeyValue> kv = new ArrayList<>();
-		Set<KeyValue> s = new HashSet<>();
+	private Set<String> JoinItemSet(int K, Set<String> itemsOutter, Set<String> itemsInner){
+		Set<String> outter = new HashSet<String>(itemsOutter);
+		Set<String> inner = new HashSet<String>(itemsInner);
+		Set<String> kv = new HashSet<>();
 		if(K == 2){
-			if(!itemsOutter.get(0).getKey().equals(itemsInner.get(0).getKey())){
-				kv.addAll(itemsOutter);
-				kv.addAll(itemsInner);
-				kv = this.sortItemSet(kv);
-			}
-		}else{
-
-			itemsOutter = this.sortItemSet(itemsOutter);
-			itemsInner = this.sortItemSet(itemsInner);
-			boolean forward = true;
-			boolean backward = true;
-			for(int i = 0; i < K - 2; i++){
-				if(!itemsOutter.get(i).equals(itemsInner.get(i))){
-					forward = false;
-				}
-			}
-			
-			if(!forward){
-				for(int i = K - 2; i >= 1; i--){
-					if(!itemsOutter.get(i).equals(itemsInner.get(i))){
-						backward = false;
+			for(String str_out: itemsOutter){
+				for(String str_in: itemsInner){
+					if(!str_out.startsWith(str_in.substring(0, 1))){
+						kv.add(str_in);
+						kv.add(str_out);
 					}
 				}
 			}
-			
-			if(forward){
-				if(!itemsOutter.get(K - 2).getKey().equals(itemsInner.get(K - 2).getKey())){
-					kv.addAll(itemsOutter);
-					kv.add(itemsInner.get(K - 2));
+		}else{
+
+			int size = outter.size();
+			Set<String> tmp = new HashSet<>(outter);
+			outter.retainAll(inner);
+			if(outter.size() == size - 1){
+				kv.addAll(tmp);
+				kv.addAll(inner);
+				List<String> lTmp = new ArrayList<String>();
+				lTmp.addAll(kv);
+				Collections.sort(lTmp, String.CASE_INSENSITIVE_ORDER);
+				String r ="";
+				for(String str: lTmp){
+					if(str.length() > 0 && r.length() > 0 ){
+						if(str.startsWith(r.substring(0, 1))){
+							return new HashSet<String>();
+						}
+					}
+					r = str;
 				}
-			}else if(backward){
-				if(!itemsOutter.get(0).getKey().equals(itemsOutter.get(0).getKey())){
-					kv.addAll(itemsOutter);
-					kv.add(itemsInner.get(0));
-				}
+				kv.clear();
+				kv.addAll(lTmp);
 			}
 			
-			if(kv.size() > 0){
-				kv = this.sortItemSet(kv);	
-			}
 			
 		}
 		return kv;
@@ -219,6 +257,17 @@ public class Apriori {
 			orderMap.put(labels.indexOf(kvList.get(i).getKey()), kvList.get(i));
 		}
 		result.addAll(orderMap.values());
+		return result;
+	}
+	private List<KeyValue> buildKeyValueListFromString(Set<String> kvStrings){
+		List<KeyValue> result = new ArrayList<>();
+		for(String str: kvStrings){
+			for(KeyValue kv: this.items){
+				if(kv.getKeyValueString().equals(str)){
+					result.add(kv);
+				}
+			}
+		}
 		return result;
 	}
 }
