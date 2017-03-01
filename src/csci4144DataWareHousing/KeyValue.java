@@ -3,9 +3,11 @@ package csci4144DataWareHousing;
 public class KeyValue {
 	private String key;
 	private String value;
-	public KeyValue(String key, String val){
+	private String KeyValueString;
+	public KeyValue(String key, String val, String keyValueString ){
 		this.key = key;
 		this.value = val;
+		this.KeyValueString = keyValueString;
 	}
 	public String getKey() {
 		return key;
@@ -19,5 +21,12 @@ public class KeyValue {
 	public void setValue(String value) {
 		this.value = value;
 	}
+	public String getKeyValueString() {
+		return KeyValueString;
+	}
+	public void setKeyValueString(String keyValueString) {
+		KeyValueString = keyValueString;
+	}
+	
 	
 }

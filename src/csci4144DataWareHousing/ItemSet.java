@@ -1,10 +1,13 @@
 package csci4144DataWareHousing;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ItemSet {
 	private List<KeyValue> kvList = new ArrayList<KeyValue>();
+	private Set<String> kvValueList = new HashSet<String>();
 	private double conf;
 	private double supp;
 	public double getConf() {
@@ -27,5 +30,11 @@ public class ItemSet {
 	}
 	public List<KeyValue> getItemSet(){
 		return kvList;
+	}
+	public void addStringKVList(Set<String> strKVList){
+		kvValueList.addAll(strKVList);
+	}
+	public Set<String> getItemSetKeyValuesList(){
+		return this.kvValueList;
 	}
 }
