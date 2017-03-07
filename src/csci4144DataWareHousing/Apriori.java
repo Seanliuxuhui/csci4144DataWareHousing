@@ -6,14 +6,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 public class Apriori {
 
+	/**
+	 * private property initialization 
+	 */
 	private Database db;
 	private List<KeyValue> items;
 	private double sup_rate;
@@ -21,12 +25,18 @@ public class Apriori {
 	private List<ItemSet> frequentItemSets = new ArrayList<>();
 	private List<ItemSet> candidateItemSets = null;
 	private Map<Integer, List<ItemSet>> frequentItemSetMap = new HashMap<>();
+	private Map<Set<String>, ItemSet> contentItemSetMap = new HashMap<>();
+	private ItemSet fset;
 	public Apriori(Database db, double support, double confidence){
 		this.db = db;
 		this.sup_rate = support;
 		this.conf_rate = confidence;
 	}
-	public void RunApriori(){
+	
+	/**
+	 * main function to generate the frequent item set and rules
+	 */
+	public List<ItemSet> RunApriori(){
 		//1. generate keyvalue list from db 
 		int labelSize = db.getlabelSize();
 		items = new ArrayList<KeyValue>();
@@ -46,18 +56,10 @@ public class Apriori {
 			firstItemSet = this.GenerateFirstItemSet();
 			frequentItemSets.addAll(firstItemSet);
 			this.frequentItemSetMap.put(1, firstItemSet);
+			this.addItemSets(this.frequentItemSets);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-		
-		//testing firstItemSet
-		for(ItemSet item: firstItemSet){
-			KeyValue kv = item.getItemSet().get(0);
-			String key = kv.getKey();
-			String val = kv.getValue();
-			System.out.println(key + " " + val);
-			System.out.println(item.getSupp());
 		}
 		
 		int m = 2;
@@ -79,14 +81,8 @@ public class Apriori {
 						}
 					}
 					if(tmp.size() == m && !exists){
-						if(m == 4){
-							System.out.println(tmp.toString());
-						}
 						List<KeyValue> result = this.buildKeyValueListFromString(tmp);
 						double newSupportRate = this.GetSupportValueForItemSet(result);
-						if(m == 4){
-							System.out.println(newSupportRate);
-						}
 						if(newSupportRate > this.sup_rate){
 							ItemSet newItemSet = new ItemSet();
 							newItemSet.addAll(result);
@@ -98,47 +94,25 @@ public class Apriori {
 					exists = false;
 				}
 			}
-			if(m == 4){
-				for(ItemSet it: candidateItemSets){
-					System.out.println(it.getItemSetKeyValuesList().toString());
-				}
-			}
 			tmpItemSet = this.GenerateFrequentItemSet(candidateItemSets,m);
+			this.addItemSets(tmpItemSet);
 			this.frequentItemSetMap.put(m++, new ArrayList<ItemSet>(tmpItemSet));
 			frequentItemSets.addAll(new ArrayList<ItemSet>(tmpItemSet));
 		}
 		
-		this.printFreqItemSet(frequentItemSets);
+//		this.printFreqItemSet(frequentItemSets);
+		return this.frequentItemSets;
 		
 	}
 	
-	private void printFreqItemSet(List<ItemSet> freqItemSet){
-		int count = 1;
-		for(ItemSet iSet: freqItemSet){
-			List<KeyValue> kvList = iSet.getItemSet();
-			System.out.println("frequent Item Set: " + count++ );
-			for(int i = 0; i < kvList.size(); i++){
-				KeyValue kv = kvList.get(i);
-				System.out.println("label: " + kv.getKey() + " value: " + kv.getValue());
-			}
-			System.out.println(iSet.getItemSetKeyValuesList().toString());
-			System.out.println(iSet.getSupp());
-			
-		}
-	}
-	public List<ItemSet> SortList (List<ItemSet> lstKItemItemSetCopied){
-		return new ArrayList<>();
-	}
+	// section for frequent item set generation
 	
-	private void ProcessRules(){
-		
-	}
-	public void GenerateRulesSets(List<Rules> lstRules, List<KeyValue> lstKeyValue){
-		
-	}
-	private boolean IsCombinationExists(List<KeyValue> lstItemMultiply, List<List<KeyValue>> list){
-		return true;
-	}
+	
+	/**
+	 * generate the first item set
+	 * @return
+	 * @throws Exception
+	 */
 	private List<ItemSet> GenerateFirstItemSet() throws Exception{
 		List<ItemSet> firstItemSet = new ArrayList<ItemSet>();
 		ItemSet tmpItemSet = null;
@@ -183,9 +157,7 @@ public class Apriori {
 		
 		return this.PruneKItemSet(lstItemSet, K);
 	}
-	private boolean IsItemSetExists(List<ItemSet> lstKLevelItemSet, List<KeyValue> lstKeyValues){
-		return true;
-	}
+	
 	private Set<String> JoinItemSet(int K, Set<String> itemsOutter, Set<String> itemsInner){
 		Set<String> outter = new HashSet<String>(itemsOutter);
 		Set<String> inner = new HashSet<String>(itemsInner);
@@ -228,36 +200,89 @@ public class Apriori {
 		return kv;
 	}
 	
-	private boolean IsPruneRules(){
-		return true;
-	}
+	/**
+	 * section of rules generation 
+	 */
 	
-	private double GetSupportValueForItemSet(List<KeyValue> kvList){
-		double freq = db.countLiteral(kvList) * 1.0;
-		double freq_rate = BigDecimal.valueOf(freq/db.RowCount()).setScale(2, RoundingMode.HALF_UP).doubleValue();
-		return freq_rate ;
-	}
-	
-	private List<Rules> GenerateRules(List<List<KeyValue>> lstConditions, List<KeyValue> lstKeyValue){
-		return new ArrayList<>();
-	}
-	
-	private List<KeyValue> GetJoinedItems(KeyValue keyValue, List<KeyValue> list){
-		return new ArrayList<>();
-	}
-	
-	private boolean IsRuleExists(List<Rules> lstRules, Rules ruleToFind){
-		return true;
-	}
-	private List<KeyValue> sortItemSet(List<KeyValue> kvList){
-		List<KeyValue> result = new ArrayList<>();
-		List<String> labels = db.getLabelNames();
-		Map<Integer, KeyValue> orderMap = new TreeMap<>();
-		for(int i = 0; i < kvList.size(); i++){
-			orderMap.put(labels.indexOf(kvList.get(i).getKey()), kvList.get(i));
+	public List<Rules> ProcessRules(){
+		List<ItemSet> frequentKItemSet = new ArrayList<ItemSet>();
+		for(int i = this.frequentItemSetMap.keySet().size(); i > 1; i--){
+			if(!this.frequentItemSetMap.get(i).isEmpty()){
+				frequentKItemSet.addAll(this.frequentItemSetMap.get(i));
+			}
 		}
-		result.addAll(orderMap.values());
-		return result;
+
+		return this.GenerateRules(frequentKItemSet);
+	}
+	
+	public void GenerateRulesSets(List<Rules> lstRules, List<KeyValue> lstKeyValue){
+		
+	}
+	
+	private List<HashSet<String>> SubsetFrequentItemSet(Set<String> freqItemSet){
+		List<HashSet<String>> ans = new ArrayList<HashSet<String>>();
+		if(freqItemSet.size() > 1){
+			HashSet<String> oneElem = null;
+			HashSet<String> restElems = null;
+			for(String str: freqItemSet){
+				restElems = new HashSet<String>(freqItemSet);
+				oneElem = new HashSet<String>();
+				oneElem.add(str);
+				restElems.removeAll(oneElem);
+				ans.add(restElems);
+				
+			}
+		}
+		return ans;
+	}
+	
+	private List<Rules> GenerateRules(List<ItemSet> frequentItemSet){
+		List<Rules> rules = new ArrayList<Rules>(); 
+		Queue<HashSet<String>> subset = new LinkedList<HashSet<String>>();
+		Set<String> failedItem = new HashSet<>();
+		for(ItemSet fset: frequentItemSet){
+			subset = this.addNewElemIntoSubset(subset, this.SubsetFrequentItemSet(fset.getItemSetKeyValuesList()));
+			while(subset.size() > 0){
+				Set<String> bigSet = subset.remove();
+				ItemSet restElemItemSet = this.findItemSetWithItemSetValue(bigSet);
+				if(restElemItemSet != null && (failedItem.size() == 0 ||!bigSet.containsAll(failedItem))){
+					double conf_calculated = BigDecimal.valueOf(fset.getSupp() / restElemItemSet.getSupp()).setScale(2, RoundingMode.HALF_UP).doubleValue();
+					if(conf_calculated > this.conf_rate){
+						Set<String> ss = new HashSet<String>(fset.getItemSetKeyValuesList());
+						ss.removeAll(bigSet);
+						Rules newrule = new Rules(fset.getSupp(), conf_calculated, restElemItemSet, this.findItemSetWithItemSetValue(ss));
+						rules.add(newrule);
+						subset = this.addNewElemIntoSubset(subset, this.SubsetFrequentItemSet(bigSet));
+					}else{
+						failedItem.addAll(bigSet);
+					}
+				}
+			}
+			failedItem = new HashSet<>();
+		}
+		
+		return rules;
+	}
+	
+	
+	
+//	 helper functions 
+	private boolean checkIfItemSetExisted(Queue<HashSet<String>> subset, HashSet<String> newItemSet){
+		for(HashSet<String> s: subset){
+			if(newItemSet.containsAll(s)){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private Queue<HashSet<String>> addNewElemIntoSubset(Queue<HashSet<String>> subset, List<HashSet<String>> elems){
+		for(HashSet<String> elem: elems){
+			if(!this.checkIfItemSetExisted(subset, elem)){
+				subset.add(elem);
+			}
+		}
+		return subset;
 	}
 	private List<KeyValue> buildKeyValueListFromString(Set<String> kvStrings){
 		List<KeyValue> result = new ArrayList<>();
@@ -269,5 +294,65 @@ public class Apriori {
 			}
 		}
 		return result;
+	}
+	
+	private List<KeyValue> sortItemSet(List<KeyValue> kvList){
+		List<KeyValue> result = new ArrayList<>();
+		List<String> labels = db.getLabelNames();
+		Map<Integer, KeyValue> orderMap = new TreeMap<>();
+		for(int i = 0; i < kvList.size(); i++){
+			orderMap.put(labels.indexOf(kvList.get(i).getKey()), kvList.get(i));
+		}
+		result.addAll(orderMap.values());
+		return result;
+	}
+	
+	private void printKVList(List<ArrayList<KeyValue>> kvList){
+		for(int i = 0; i < kvList.size(); i++){
+			if(!kvList.get(i).isEmpty()){
+				System.out.print("{");
+				for(KeyValue kv: kvList.get(i)){
+					System.out.println("label: " + kv.getKey() + " value: " + kv.getValue());
+				}
+				System.out.println("}");
+			}
+		}
+	}
+	
+	private void printFreqItemSet(List<ItemSet> freqItemSet){
+		int count = 1;
+		for(ItemSet iSet: freqItemSet){
+			List<KeyValue> kvList = iSet.getItemSet();
+			System.out.println("frequent Item Set: " + count++ );
+			for(int i = 0; i < kvList.size(); i++){
+				KeyValue kv = kvList.get(i);
+				System.out.println("label: " + kv.getKey() + " value: " + kv.getValue());
+			}
+			System.out.println(iSet.getItemSetKeyValuesList().toString());
+			System.out.println(iSet.getSupp());
+			
+		}
+	}
+	
+	private double GetSupportValueForItemSet(List<KeyValue> kvList){
+		double freq = db.countLiteral(kvList) * 1.0;
+		double freq_rate = BigDecimal.valueOf(freq/db.RowCount()).setScale(2, RoundingMode.HALF_UP).doubleValue();
+		return freq_rate ;
+	}
+	
+	private ItemSet findItemSetWithItemSetValue(Set<String> items){
+		if(this.contentItemSetMap.containsKey(items)){
+			return this.contentItemSetMap.get(items);
+		}
+		return null;
+	}
+	
+	private void addItemSets(List<ItemSet> iSets){
+		for(ItemSet iSet: iSets){
+			this.addItemSetIntoContentItemSetMap(iSet);
+		}
+	}
+	private void addItemSetIntoContentItemSetMap(ItemSet iSet){
+		this.contentItemSetMap.put(iSet.getItemSetKeyValuesList(), iSet);
 	}
 }
