@@ -15,5 +15,6 @@ public class Main {
 		System.out.println("Enter Confidence Rate");
 		double dbConfidence = sc.nextDouble();
 		p.Run(dbSupport, dbConfidence);
+		p.SaveRules(dbSupport, dbConfidence);
 	}
 }
