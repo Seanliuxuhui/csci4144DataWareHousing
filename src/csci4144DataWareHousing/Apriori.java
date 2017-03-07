@@ -24,7 +24,7 @@ public class Apriori {
 	private double conf_rate;
 	private List<ItemSet> frequentItemSets = new ArrayList<>();
 	private List<ItemSet> candidateItemSets = null;
-	private Map<Integer, List<ItemSet>> frequentItemSetMap = new HashMap<>();
+	private Map<Integer, List<Set<String>>> frequentItemSetStringMap = new HashMap<>();
 	private Map<Set<String>, ItemSet> contentItemSetMap = new HashMap<>();
 	private ItemSet fset;
 	public Apriori(Database db, double support, double confidence){
@@ -55,7 +55,7 @@ public class Apriori {
 		try {
 			firstItemSet = this.GenerateFirstItemSet();
 			frequentItemSets.addAll(firstItemSet);
-			this.frequentItemSetMap.put(1, firstItemSet);
+			this.addFreqItemSetString(firstItemSet, 1);
 			this.addItemSets(this.frequentItemSets);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -75,12 +75,7 @@ public class Apriori {
 				for(int j = i + 1; j < tmpItemSet.size(); j++){
 					ItemSet jItemSet = tmpItemSet.get(j);
 					Set<String> tmp = JoinItemSet(m, iItemSet.getItemSetKeyValuesList(), jItemSet.getItemSetKeyValuesList());
-					for(ItemSet it: candidateItemSets){
-						if(it.getItemSetKeyValuesList().containsAll(tmp)){
-							exists= true;
-						}
-					}
-					if(tmp.size() == m && !exists){
+					if(tmp.size() == m){
 						List<KeyValue> result = this.buildKeyValueListFromString(tmp);
 						double newSupportRate = this.GetSupportValueForItemSet(result);
 						if(newSupportRate > this.sup_rate){
@@ -91,16 +86,15 @@ public class Apriori {
 							candidateItemSets.add(newItemSet);
 						}
 					}
-					exists = false;
 				}
 			}
 			tmpItemSet = this.GenerateFrequentItemSet(candidateItemSets,m);
 			this.addItemSets(tmpItemSet);
-			this.frequentItemSetMap.put(m++, new ArrayList<ItemSet>(tmpItemSet));
+			this.addFreqItemSetString(tmpItemSet, m++);
 			frequentItemSets.addAll(new ArrayList<ItemSet>(tmpItemSet));
 		}
 		
-//		this.printFreqItemSet(frequentItemSets);
+		this.printFreqItemSet(frequentItemSets);
 		return this.frequentItemSets;
 		
 	}
@@ -134,19 +128,25 @@ public class Apriori {
 	}
 	private List<ItemSet> PruneKItemSet(List<ItemSet> lstKItemSet, int K)
 	{   
+		Map<HashSet<String>, ItemSet> resultMap = new HashMap<HashSet<String>, ItemSet>(); 
 		List<ItemSet> result = new ArrayList<>();
 		if(K > 2){
-			List<ItemSet> frequentK_1ItemSet = this.frequentItemSetMap.get(K - 1);
+			List<Set<String>> frequentK_1ItemSet = this.frequentItemSetStringMap.get(K - 1);
 			for(ItemSet iSet: lstKItemSet){
 				int count = 0;
-				for(ItemSet fSet: frequentK_1ItemSet){
-					if(iSet.getItemSetKeyValuesList().containsAll(fSet.getItemSetKeyValuesList())){
+				
+				for(Set<String> key: frequentK_1ItemSet){
+					if(iSet.getItemSetKeyValuesList().containsAll(key)){
 						count++;
 					}
 				}
 				if(count == K){
-					result.add(iSet);
+					resultMap.put((HashSet<String>) iSet.getItemSetKeyValuesList(), iSet);
+					count = 0;
 				}
+			}
+			for(ItemSet iset: resultMap.values()){
+				result.add(iset);
 			}
 			return result;
 		}
@@ -206,9 +206,9 @@ public class Apriori {
 	
 	public List<Rules> ProcessRules(){
 		List<ItemSet> frequentKItemSet = new ArrayList<ItemSet>();
-		for(int i = this.frequentItemSetMap.keySet().size(); i > 1; i--){
-			if(!this.frequentItemSetMap.get(i).isEmpty()){
-				frequentKItemSet.addAll(this.frequentItemSetMap.get(i));
+		for(int i = this.frequentItemSetStringMap.keySet().size(); i > 1; i--){
+			if(!this.frequentItemSetStringMap.get(i).isEmpty()){
+				frequentKItemSet.addAll(this.findItemsetsWithItemSetStringValue(this.frequentItemSetStringMap.get(i)));
 			}
 		}
 
@@ -347,6 +347,14 @@ public class Apriori {
 		return null;
 	}
 	
+	private List<ItemSet> findItemsetsWithItemSetStringValue(List<Set<String>> iSets){
+		List<ItemSet> results = new ArrayList<>();
+		for(Set<String> s: iSets){
+			results.add(this.findItemSetWithItemSetValue(s));
+		}
+		return results;
+	}
+	
 	private void addItemSets(List<ItemSet> iSets){
 		for(ItemSet iSet: iSets){
 			this.addItemSetIntoContentItemSetMap(iSet);
@@ -354,5 +362,13 @@ public class Apriori {
 	}
 	private void addItemSetIntoContentItemSetMap(ItemSet iSet){
 		this.contentItemSetMap.put(iSet.getItemSetKeyValuesList(), iSet);
+	}
+	
+	private void addFreqItemSetString(List<ItemSet> iSets, int K){
+		List<Set<String>> freqSets = new ArrayList<>();
+		for(ItemSet iset: iSets){
+			freqSets.add(iset.getItemSetKeyValuesList());
+		}
+		this.frequentItemSetStringMap.put(K, freqSets);
 	}
 }
