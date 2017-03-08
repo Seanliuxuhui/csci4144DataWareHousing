@@ -35,7 +35,7 @@ public class Processing {
 			for(int i = 0; i < rules.size(); i++){
 				str = new String();
 				Rules rule = rules.get(i);
-				str = "Rules#" + i + ":";
+				str = "Rules#" + (i + 1) + ":";
 				str += "(Support=" + rule.getSupp_rate() + ",";
 				str += " Confidence=" + rule.getConf_rate() +")\n";
 				str += "{ ";

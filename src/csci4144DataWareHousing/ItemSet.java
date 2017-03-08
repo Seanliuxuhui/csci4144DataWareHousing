@@ -10,6 +10,13 @@ public class ItemSet {
 	private Set<String> kvValueList = new HashSet<String>();
 	private double conf;
 	private double supp;
+	
+	public ItemSet(List<KeyValue> kvList, Set<String> kvValueList, double sup,double conf){
+		this.kvList = kvList;
+		this.kvValueList = kvValueList;
+		this.conf = conf;
+		this.supp = sup;
+	}
 	public double getConf() {
 		return conf;
 	}
